@@ -14,6 +14,20 @@
 import argparse
 import os
 
+def get_data_path():
+    """Returns the path of the data directory, which should be a sibling to this file's parent directory."""
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data'))
+
+def data_dir_exists():
+    data_path = get_data_path()
+    return os.path.exists(data_path) and os.path.isdir(data_path)
+
+def generate_data_dir():
+    """ Create the data directory, if it doesn't exist. """
+    data_path = get_data_path()
+    os.mkdir(data_path)
+
+
 def main():
     parser = argparse.ArgumentParser(description='Manages task list.')
     group = parser.add_mutually_exclusive_group()
@@ -23,6 +37,10 @@ def main():
     group.add_argument('-n', action='store_true', dest='show_num')
 
     args = parser.parse_args()
+
+
+    if not data_dir_exists():
+        generate_data_dir()
 
     if(args.new_task != None):
         add_task(args.new_task)
@@ -39,24 +57,26 @@ def main():
 
     else:
         # PRINT TASK LIST: file
-        f = open(os.environ['TASKPATH'] + "tasks.txt")
+        data_path = get_data_path()
+        f = open("{}/{}".format(data_path, "tasks.txt"))
         print("\n== CURRENT TASKS ==\n")
-        i = 1
-        for line in f:
-            print( ((" "+str(i) + ". ") if args.show_num else " - ") + line),
-            i += 1
+        for i,line in enumerate(f):
+            line_marker = "{}.".format(str(i) + 1) if args.show_num else "-"
+            print(" {} {}".format(line_marker, line))
         print("")
 
 def strike_task(task):
-    print "Woops this doesn't work yet"
+    print("Woops this doesn't work yet")
 
 def add_task(new_task):
-    f = open(os.environ['TASKPATH'] + 'tasks.txt', 'a')
+    data_path = get_data_path()
+    f = open("{}/{}".format(data_path, "tasks.txt"), 'a')
     f.write(new_task + "\n")
-    print("Wrote new task: " + new_task)
+    print("Wrote new task: {}".format(new_task))
 
 def remove_task_by_num(del_num):
-    f = open(os.environ['TASKPATH'] + 'tasks.txt', 'r+')
+    data_path = get_data_path()
+    f = open("{}/{}".format(data_path, "tasks.txt"), 'r+')
     lines = f.readlines()
     f.seek(0)
 
@@ -78,7 +98,8 @@ def remove_task_by_num(del_num):
         print("Task number doesn't exist: " + del_num)
 
 def remove_task(task):
-    f = open(os.environ['TASKPATH'] + 'tasks.txt', 'r+')
+    data_path = get_data_path()
+    f = open("{}/{}".format(data_path, "tasks.txt"), 'r+')
     lines = f.readlines()
     f.seek(0)
     found = None
