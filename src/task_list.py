@@ -39,7 +39,7 @@ class Task:
 
 class TaskList:
     # Some dict constants:
-    UNSORTED_TRACK='General'
+    UNSORTED_TRACK='GENERAL'
     TASK_LIST = 'task_list'
     DESC = 'desc'
     COLOR = 'color'
@@ -57,9 +57,16 @@ class TaskList:
         Adds to the tasklist with the name 'track', if specified, otherwise,
             adds to 'General'
         """
+
+        # If empty string, do nothing
+        if not task:
+            return
+
+        # If track is unspecified, add to the unsorted track
         if not track:
             track = self.UNSORTED_TRACK
 
+        track = track.upper()
         if track not in self.tracks:
             raise ValueError("Track '{}' does not exist".format(track))
 
@@ -76,6 +83,7 @@ class TaskList:
         if name in self.tracks:
             raise ValueError("Track '{}' already exists".format(name))
 
+        name = name.upper()
         self.tracks[name] = { self.DESC:desc, self.TASK_LIST:[], self.COLOR:color }
 
     def complete_task(self, task=None, track=None, t_idx=None):
@@ -86,7 +94,7 @@ class TaskList:
 
         NOTE: this runs in O(N) time.
 
-        :return True if a task was found, False otherwise
+        :return The text of the task if a task was found, None otherwise
         """
         if not task:
             if not track and not t_idx:
@@ -96,29 +104,35 @@ class TaskList:
 
         if not track:
             for track_name in self.tracks:
-                if self.complete_task(task, track=track_name):
-                    return True
-            return False
+                success = self.complete_task(task, track=track_name)
+                if success:
+                    return success
+            return None
 
         else:
+            track = track.upper()
+
             if track not in self.tracks:
                 raise ValueError("Given track '{}' does not exist".format(track))
             track_data = self.tracks[track]
 
             if t_idx:
+                # Find the task by index
                 if idx >= len(track_data[self.TASK_LIST]):
                     raise ValueError("Index '{}' out of bounds for track '{}'".format(t_idx,track))
 
-                track_data[self.TASK_LIST][t_idx].complete = True
-                return True
+                task = track_data[self.TASK_LIST][t_idx]
+                task.complete = True
+                return task.txt
+            else:
+                # Search through the given track
+                for curr_task in track_data[self.TASK_LIST]:
+                    if curr_task.txt.lower().find(task.lower()) == 0:
+                        # Task found. Complete:
+                        curr_task.complete = True
+                        return curr_task.txt
 
-            for curr_task in track_data[self.TASK_LIST]:
-                if curr_task.txt.lower().find(task.lower()) == 0:
-                    # Task found. Remove:
-                    curr_task.complete = True
-                    return True
-
-            return False
+            return None
 
     def del_task(self, task=None, track=None, t_idx=None):
         """
@@ -127,7 +141,7 @@ class TaskList:
 
         NOTE: this runs in O(N) time.
 
-        :return True if a task was found and removed, False otherwise
+        :return The task that was found and removed, None otherwise
         """
         if not task:
             if not track and not t_idx:
@@ -137,32 +151,38 @@ class TaskList:
 
         if not track:
             for track_name in self.tracks:
-                if self.del_task(task, track=track_name):
-                    return True
-            return False
+                success = self.del_task(task, track=track_name)
+                if success:
+                    return success
+            return None
         else:
+            track = track.upper()
+
             if track not in self.tracks:
                 raise ValueError("Given track '{}' does not exist".format(track))
 
             track_data = self.tracks[track]
 
             if t_idx:
-                if idx >= len(track_data[self.TASK_LIST]):
+                if t_idx >= len(track_data[self.TASK_LIST]):
                     raise ValueError("Index '{}' out of bounds for track '{}'".format(t_idx,track))
 
-                track_data[self.TASK_LIST].pop(t_idx)
-                return True
+                task = track_data[self.TASK_LIST].pop(t_idx)
+                return task.txt
 
             for idx,curr_task in enumerate(track_data[self.TASK_LIST]):
                 if curr_task.txt.lower().find(task.lower()) == 0:
                     # Task found. Remove:
-                    track_data[self.TASK_LIST].pop(idx)
-                    return True
+                    task = track_data[self.TASK_LIST].pop(idx)
+                    return task.txt
 
-            return False
+            return None
 
     def get_tasks_in_track(self, track):
         """ Return a list of task tuples, in the format (txt,is_complete,date_created). """
+        track = track.upper()
+        if track not in self.tracks:
+            raise ValueError("Given track {} does not exist".format(track))
         return self.tracks[track][self.TASK_LIST]
 
     def get_tracks(self):
@@ -171,9 +191,9 @@ class TaskList:
 
     def del_track(self, track):
         """ Deletes the track, and all data associated with it. """
+        track = track.upper()
         if track not in self.tracks:
             raise ValueError("Given track {} does not exist".format(track))
-
         del self.tracks[track]
 
     def load_from_file(self, file_path):
@@ -207,7 +227,19 @@ class TaskList:
         f.close()
 
     def get_track_color(self, track):
+        track = track.upper()
         if track not in self.tracks:
             raise ValueError("Given track {} does not exist".format(track))
 
         return self.tracks[track][self.COLOR]
+
+    def set_track_color(self, track, color):
+        """
+        :Params:
+        :color - one of the colors specified in the imported 'color' class
+        """
+        track = track.upper()
+        if track not in self.tracks:
+            raise ValueError("Given track {} does not exist".format(track))
+
+        self.tracks[track][self.COLOR] = color

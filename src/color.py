@@ -9,4 +9,8 @@ class color:
     RED = '\033[91m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+    FAINT = '\033[2m'
+    BLINK = '\033[5m'
     END = '\033[0m'
+
+    COLORS = ['PURPLE', 'CYAN', 'DARKCYAN', 'BLUE', 'GREEN', 'YELLOW', 'RED']
