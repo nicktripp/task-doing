@@ -8,11 +8,13 @@
 #TODO: print color?
 #TODO: make multiple lists, that aggregate
 #TODO: make distributed
-#TODO: redo pathing to remove env vars
 #TODO: DOCUMENT!
+#TODO: import tasks from file
 #==============================================================================#
 import argparse
 import os
+
+from task_list import TaskList
 
 def get_data_path():
     """Returns the path of the data directory, which should be a sibling to this file's parent directory."""
@@ -38,41 +40,57 @@ def main():
 
     args = parser.parse_args()
 
-
     if not data_dir_exists():
         generate_data_dir()
 
+    data_file = os.path.join(get_data_path(), 'tasks.JSON')
+    task_list = TaskList(data_file)
+
     if(args.new_task != None):
-        add_task(args.new_task)
+        task_list.add_task(args.new_task)
+        print("Wrote new task: {}".format(args.new_task))
 
     elif(args.del_task != None):
+        arg_is_num = False
         try:
             del_num = int(args.del_task)
-            remove_task_by_num(del_num)
+            arg_is_num = True
         except ValueError:
-            remove_task(args.del_task)
+            arg_is_num = False
+
+        if arg_is_num:
+            track = 'General'
+            success = task_list.del_task(t_idx=del_num, track=track)
+            if(success):
+                print("Deleted task: #{} in track '{}'".format(del_num, track))
+            else:
+                print("Task number doesn't exist: {}".format(del_num))
+        else:
+            success = task_list.del_task(task=args.del_task)
+            if(success):
+                print("Deleted task: {}".format(args.del_task))
+            else:
+                print("Task doesn't exist: {}".format(args.del_task))
 
     elif(args.comp_task != None):
         strike_task(args.comp_task)
 
     else:
-        # PRINT TASK LIST: file
-        data_path = get_data_path()
-        f = open("{}/{}".format(data_path, "tasks.txt"))
-        print("\n== CURRENT TASKS ==\n")
-        for i,line in enumerate(f):
-            line_marker = "{}.".format(str(i) + 1) if args.show_num else "-"
-            print(" {} {}".format(line_marker, line))
+        # Print task list
+        print("\n== CURRENT TASKS ==")
+        task_tracks = task_list.get_tracks()
+        for track in task_tracks:
+            print("\n\t-{}-".format(track))
+            for task in task_list.get_tasks_in_track(track):
+                line_marker = "{}.".format(str(i)) if args.show_num else "-"
+                print(" {} {}".format(line_marker, task.txt))
         print("")
+
+    task_list.write_to_file(data_file)
 
 def strike_task(task):
     print("Woops this doesn't work yet")
 
-def add_task(new_task):
-    data_path = get_data_path()
-    f = open("{}/{}".format(data_path, "tasks.txt"), 'a')
-    f.write(new_task + "\n")
-    print("Wrote new task: {}".format(new_task))
 
 def remove_task_by_num(del_num):
     data_path = get_data_path()
