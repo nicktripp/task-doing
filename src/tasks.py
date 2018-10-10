@@ -14,6 +14,7 @@
 import argparse
 import os
 
+from color import color
 from task_list import TaskList
 
 def get_data_path():
@@ -29,6 +30,15 @@ def generate_data_dir():
     data_path = get_data_path()
     os.mkdir(data_path)
 
+def print_track_header(task_list, track):
+    rows, columns = os.popen('stty size', 'r').read().split()
+    head_str= task_list.get_track_color(track) + "{:-^" + columns + "}"
+    print(head_str.format(" {} ".format(track)))
+
+def print_header():
+    rows, columns = os.popen('stty size', 'r').read().split()
+    head_str= color.BOLD + "{:=^" + columns + "}" + color.END
+    print(head_str.format(" TASKS "))
 
 def main():
     parser = argparse.ArgumentParser(description='Manages task list.')
@@ -77,64 +87,18 @@ def main():
 
     else:
         # Print task list
-        print("\n== CURRENT TASKS ==")
+        print_header()
         task_tracks = task_list.get_tracks()
         for track in task_tracks:
-            print("\n\t-{}-".format(track))
+
+            print_track_header(task_list, track)
+
             for task in task_list.get_tasks_in_track(track):
                 line_marker = "{}.".format(str(i)) if args.show_num else "-"
                 print(" {} {}".format(line_marker, task.txt))
+            print(color.END)
         print("")
 
     task_list.write_to_file(data_file)
-
-def strike_task(task):
-    print("Woops this doesn't work yet")
-
-
-def remove_task_by_num(del_num):
-    data_path = get_data_path()
-    f = open("{}/{}".format(data_path, "tasks.txt"), 'r+')
-    lines = f.readlines()
-    f.seek(0)
-
-    found = None
-    line_num = 1
-    for line in lines:
-        if(not found and line_num == del_num):
-            found = line
-        else:
-            f.write(line)
-            line_num += 1
-
-    f.truncate()
-    f.close()
-
-    if(found):
-        print("Deleted task: " + found),
-    else:
-        print("Task number doesn't exist: " + del_num)
-
-def remove_task(task):
-    data_path = get_data_path()
-    f = open("{}/{}".format(data_path, "tasks.txt"), 'r+')
-    lines = f.readlines()
-    f.seek(0)
-    found = None
-    for line in lines:
-        if(not found and line.lower().find(task.lower()) == 0):
-            found = line
-        else:
-            f.write(line)
-
-    f.truncate()
-    f.close()
-
-    if(found):
-        print("Deleted task: " + found),
-    else:
-        print("Could not find task: " + task)
-
-
 
 if __name__ == '__main__': main()

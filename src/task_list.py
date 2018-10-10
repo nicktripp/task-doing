@@ -3,9 +3,12 @@ import os
 import time
 import json
 
+from color import color
+
 ### Structure of a Task List:
 # {
 #     'General': {
+#         'color': color_str,
 #         'desc': 'A description of this track'
 #         'task_list': [
 #             {'txt':'task1', 'completed':False, time_created:date_created, time_completed:time_cmpleted},
@@ -39,11 +42,12 @@ class TaskList:
     UNSORTED_TRACK='General'
     TASK_LIST = 'task_list'
     DESC = 'desc'
+    COLOR = 'color'
 
     def __init__(self, file_path=None):
         if not file_path or not os.path.exists(file_path) or not os.path.isfile(file_path):
             self.tracks = {}
-            self.add_track(self.UNSORTED_TRACK, 'General, unsorted tasks')
+            self.add_track(self.UNSORTED_TRACK, 'General, unsorted tasks', color.GREEN)
         else:
             self.load_from_file(file_path)
 
@@ -57,14 +61,14 @@ class TaskList:
             track = self.UNSORTED_TRACK
 
         if track not in self.tracks:
-            raise ValueError("Track '{}' does not exist".format(track)) # TODO: define behavior
+            raise ValueError("Track '{}' does not exist".format(track))
 
         task_complete = False
 
         track_data = self.tracks[track]
         track_data[self.TASK_LIST].append(Task(task))
 
-    def add_track(self, name, desc=''):
+    def add_track(self, name, desc='', color=''):
         """
         Adds a task track with the specified name and description.
         Raises ValueError if the track already exists.
@@ -72,7 +76,7 @@ class TaskList:
         if name in self.tracks:
             raise ValueError("Track '{}' already exists".format(name))
 
-        self.tracks[name] = { self.DESC:desc, self.TASK_LIST:[] }
+        self.tracks[name] = { self.DESC:desc, self.TASK_LIST:[], self.COLOR:color }
 
     def complete_task(self, task=None, track=None, t_idx=None):
         """
@@ -201,3 +205,9 @@ class TaskList:
         json.dump(self.tracks, f, cls=Task.Encoder)
         f.truncate()
         f.close()
+
+    def get_track_color(self, track):
+        if track not in self.tracks:
+            raise ValueError("Given track {} does not exist".format(track))
+
+        return self.tracks[track][self.COLOR]
