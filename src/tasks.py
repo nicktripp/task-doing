@@ -9,7 +9,6 @@
 #TODO: DOCUMENT!
 #TODO: import tasks from file
 #TODO: Handle delete collisions by asking to clarify
-#TODO: Undo action button (via another JSON file!)
 #TODO: Switch from task lists to task sets, and from delete by index to delete by ID
 #TODO: multiple task add
 #TODO: Rewrite for SQLite Database to store data
@@ -48,7 +47,11 @@ def print_header(title):
 
 def main():
     data_file = os.path.join(get_data_path(), 'tasks.JSON')
+    last_data_file = data_file + ".last"
+
     task_list = TaskList(data_file)
+    task_list_cpy = TaskList(data_file)
+    is_changed = False # Assume the task list is not modified
 
     parser = argparse.ArgumentParser(description='Manages task list.')
     parser.add_argument('-v','--verbose', action='count', help='display more information') # TODO: connect parser
@@ -118,6 +121,9 @@ def main():
     parser_track_mod.add_argument('-d','--desc', dest='track_new_desc', help='new description of the track')
 
 
+    ### UNDO
+    parser_undo = subparsers.add_parser('undo', help='Undos the last successful action')
+
     args = parser.parse_args()
     dargs = vars(args)
     print(args)
@@ -155,8 +161,11 @@ def main():
     # Connect 'add' parser
     elif 'new_task' in dargs:
         task_list.add_task(args.new_task, track=args.add_track)
+
         track = TaskList.UNSORTED_TRACK if not args.add_track else args.add_track
-        print("Wrote new task: {} to track '{}{}{}'".format(args.new_task, task_list.get_track_color(track),track,color.END))
+
+        print("Wrote new task: '{}' to track '{}{}{}'".format(args.new_task, task_list.get_track_color(track),track,color.END))
+        is_changed = True
 
     # Connect 'del' parser
     elif args.subcommand.find('d') == 0:
@@ -174,12 +183,14 @@ def main():
                 exit(0)
             if(success):
                 print("Deleted task: #{} in track '{}': '{}'".format(args.del_task_num, args.del_track, success))
+                is_changed = True
             else:
                 print("Task #{} doesn't exist in track '{}'".format(args.del_task_num, args.del_track))
         elif args.del_task_txt:
             success = task_list.del_task(task=args.del_task_txt)
             if(success):
                 print("Deleted task: '{}'".format(success))
+                is_changed = True
             else:
                 print("Could not find task: '{}'".format(args.del_task_txt))
         else:
@@ -197,16 +208,17 @@ def main():
             try:
                 success = task_list.complete_task(t_idx=args.comp_task_num, track=args.comp_track)
             except ValueError as err:
-                print("Failed to delete task: {}".format(err))
-                exit(0)
+                exit("Failed to complete task: {}".format(err))
             if(success):
                 print("Completed task: #{} in track '{}': '{}'".format(args.comp_task_num, args.comp_track, success))
+                is_changed = True
             else:
                 print("Task #{} doesn't exist in track '{}'".format(args.comp_task_num, args.comp_track))
         elif args.comp_task_txt:
             success = task_list.complete_task(task=args.comp_task_txt)
             if(success):
                 print("Completed task: '{}'".format(success))
+                is_changed = True
             else:
                 print("Could not find task: '{}'".format(args.comp_task_txt))
         else:
@@ -237,7 +249,7 @@ def main():
 
         # Add track
         elif args.tracks_action.find('a') == 0:
-            color_code = color.__dict__[args.track_color] if args.track_color else None
+            color_code = color.__dict__[args.track_color] if args.track_color else color.PLAIN
 
             try:
                 task_list.add_track(args.new_track, desc=args.track_desc, color=color_code)
@@ -245,6 +257,7 @@ def main():
                 exit("tracks add: {}".format(err))
 
             print("Added track: '{}{}{}'".format(color_code,args.new_track.upper(), color.END))
+            is_changed = True
 
         # Del track
         elif args.tracks_action.find('d') == 0:
@@ -260,6 +273,7 @@ def main():
                 if args.track_force_del and task_cnt > 0:
                     print("Deleted {} tasks".format(task_cnt))
                 print("Deleted track: '{}{}{}'".format(color_code, args.del_track, color.END))
+                is_changed = True
 
             else:
                 exit("tracks delete: track '{}{}{}' still has {} task(s); transfer task(s) or rerun with 'tracks delete --force'".format(color_code,args.del_track,color.END, task_cnt))
@@ -273,11 +287,27 @@ def main():
 
                 name = args.track_new_name if args.track_new_name else args.mod_track
                 color_code = color_code if color_code else task_list.get_track_color(name)
+
                 print("Modified track: '{}{}{}'".format(color_code, name, color.END))
+                is_changed = True
             else:
                 parser.err("tracks modify: must specify some attributes to modify")
 
+    elif args.subcommand == 'undo':
+        if os.path.exists(last_data_file) and os.path.isfile(last_data_file):
+            task_list = TaskList(last_data_file)
+            os.remove(last_data_file)
+
+            print("Undo action complete")
+            is_changed = True
+        else:
+            exit("undo: no actions to undo")
+
     print("")
-    task_list.write_to_file(data_file)
+
+    if is_changed:
+        task_list.write_to_file(data_file)
+        task_list_cpy.write_to_file(last_data_file)
+
 
 if __name__ == '__main__': main()
