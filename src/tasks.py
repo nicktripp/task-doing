@@ -5,7 +5,6 @@
 # @date July 2016
 #
 #TODO: prioritize tasks!
-#TODO: make multiple lists, that aggregate
 #TODO: make distributed
 #TODO: DOCUMENT!
 #TODO: import tasks from file
@@ -14,6 +13,7 @@
 #TODO: Switch from task lists to task sets, and from delete by index to delete by ID
 #TODO: multiple task add
 #TODO: Rewrite for SQLite Database to store data
+#TODO: add subtasks
 #==============================================================================#
 import argparse
 import os
@@ -63,6 +63,7 @@ def main():
     parser_list.add_argument('-e', '--enumerate', action='store_true', dest='list_is_enum', help='lists the tasks by their index within a track')
     parser_list.add_argument('-a','--all',  action='store_true', help='show all tasks, including completed') # TODO connect parser
     parser_list.add_argument('-c','--complete', action='store_true', help='show only complete tasks') #TODO connect parser
+    parser_list.add_argument('-r','--random', action='store_true', dest='list_is_rand', help='randomize task order (cannot be used with the -e flag)') #TODO connect parser
 
     ### Add
     parser_add = subparsers.add_parser('add', help='Add a new task to the task list', aliases=['a'])
@@ -83,6 +84,9 @@ def main():
     parser_comp.add_argument('-t','--track', dest='comp_track', choices=task_list.get_tracks(), help='the track this task belongs to')
     parser_comp.add_argument('-u','--uncomplete', dest='is_incomplete', help='mark a task as incomplete') # TODO connect parser
     parser_comp.add_argument('--ignore_collisions', action='store_true', help='ignore task collisions, deleting the first found entry') #TODO
+
+
+
 
     ### Tracks #TODO connect parser
     parser_tracks = subparsers.add_parser('tracks', help='Manipulate task tracks', aliases=['track','tr'])
@@ -105,11 +109,20 @@ def main():
 
     # Transfer track #TODO make, connect parser
     # Rename track #TODO make, connect parser
-    # Modify track #TODO make, connect parser
+
+    # Modify track
+    parser_track_mod = track_subparsers.add_parser('modify', help='Modify a task track', aliases=['mod','m'])
+    parser_track_mod.add_argument('mod_track', help='the track to modify')
+    parser_track_mod.add_argument('-n','--name', dest='track_new_name', choices=color.COLORS, help='new name of the track')
+    parser_track_mod.add_argument('-c','--color', dest='track_new_color', choices=color.COLORS, help='new color of the track')
+    parser_track_mod.add_argument('-d','--desc', dest='track_new_desc', help='new description of the track')
+
 
     args = parser.parse_args()
     dargs = vars(args)
     print(args)
+
+    print("")
 
     if not data_dir_exists():
         generate_data_dir()
@@ -126,6 +139,7 @@ def main():
 
             if args.list_is_color:
                 print(task_list.get_track_color(track), end='')
+
             if not args.list_merge:
                 print("")
 
@@ -135,12 +149,14 @@ def main():
                 if task.complete:
                     line = color.FAINT + line + color.END
                 print(line)
-            print(color.END)
+
+            print(color.END, end='' if args.list_merge else '\n')
 
     # Connect 'add' parser
     elif 'new_task' in dargs:
         task_list.add_task(args.new_task, track=args.add_track)
-        print("Wrote new task: {} to track '{}'".format(args.new_task, args.add_track if args.add_track else TaskList.UNSORTED_TRACK))
+        track = TaskList.UNSORTED_TRACK if not args.add_track else args.add_track
+        print("Wrote new task: {} to track '{}{}{}'".format(args.new_task, task_list.get_track_color(track),track,color.END))
 
     # Connect 'del' parser
     elif args.subcommand.find('d') == 0:
@@ -205,23 +221,23 @@ def main():
             # TODO: #complete count
 
             print_header("TRACKS")
-            tracks_list = task_list.get_tracks()
+            raw_tracks = task_list.get_tracks()
 
             if args.color_track_list:
-                tracks = [task_list.get_track_color(track) + track + color.END for track in tracks_list]
+                tracks = [task_list.get_track_color(track) + track + color.END for track in raw_tracks]
             else:
-                tracks = tracks_list
+                tracks = raw_tracks
 
-            row = "\t{}\t\t{}\n"
-            print(row.format(color.UNDERLINE + "NAME" + color.END,color.UNDERLINE+"TOTAL #"+ color.END))
+            row = "\t{}\t\t{}\t{}\n"
+            print(row.format(color.UNDERLINE + "NAME", "#TASKS", "DESCRIPTION" + color.END))
+
             for i,track in enumerate(tracks):
-                print(row.format(track,len(task_list.get_tasks_in_track(tracks_list[i]))))
+                print( row.format(track, len(task_list.get_tasks_in_track(raw_tracks[i])), task_list.get_track_desc(raw_tracks[i])) )
 
 
         # Add track
         elif args.tracks_action.find('a') == 0:
-            if args.track_color:
-                color_code = color.__dict__[args.track_color]
+            color_code = color.__dict__[args.track_color] if args.track_color else None
 
             try:
                 task_list.add_track(args.new_track, desc=args.track_desc, color=color_code)
@@ -245,11 +261,23 @@ def main():
                     print("Deleted {} tasks".format(task_cnt))
                 print("Deleted track: '{}{}{}'".format(color_code, args.del_track, color.END))
 
-
             else:
-                print("tracks delete: track '{}{}{}' still has {} task(s); transfer task(s) or rerun with 'tracks delete --force'".format(color_code,args.del_track,color.END, task_cnt))
+                exit("tracks delete: track '{}{}{}' still has {} task(s); transfer task(s) or rerun with 'tracks delete --force'".format(color_code,args.del_track,color.END, task_cnt))
 
-    # print("")
+        # Mod track
+        elif args.tracks_action.find('m') == 0:
+            if args.track_new_name or args.track_new_color or agrs.track_new_desc:
+                color_code = color.__dict__[args.track_new_color] if args.track_new_color else None
+
+                task_list.set_track_attr(args.mod_track, new_color=color_code, new_name=args.track_new_name, new_desc=args.track_new_desc)
+
+                name = args.track_new_name if args.track_new_name else args.mod_track
+                color_code = color_code if color_code else task_list.get_track_color(name)
+                print("Modified track: '{}{}{}'".format(color_code, name, color.END))
+            else:
+                parser.err("tracks modify: must specify some attributes to modify")
+
+    print("")
     task_list.write_to_file(data_file)
 
 if __name__ == '__main__': main()

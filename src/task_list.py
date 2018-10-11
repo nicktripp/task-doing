@@ -3,8 +3,6 @@ import os
 import time
 import json
 
-from color import color
-
 ### Structure of a Task List:
 # {
 #     'General': {
@@ -47,7 +45,7 @@ class TaskList:
     def __init__(self, file_path=None):
         if not file_path or not os.path.exists(file_path) or not os.path.isfile(file_path):
             self.tracks = {}
-            self.add_track(self.UNSORTED_TRACK, 'General, unsorted tasks', color.GREEN)
+            self.add_track(self.UNSORTED_TRACK, 'General, unsorted tasks', '')
         else:
             self.load_from_file(file_path)
 
@@ -229,17 +227,41 @@ class TaskList:
     def get_track_color(self, track):
         track = track.upper()
         if track not in self.tracks:
-            raise ValueError("Given track {} does not exist".format(track))
+            raise ValueError("Given track '{}' does not exist".format(track))
 
         return self.tracks[track][self.COLOR]
 
-    def set_track_color(self, track, color):
+    def get_track_desc(self, track):
+        track = track.upper()
+        if track not in self.tracks:
+            raise ValueError("Given track '{}' does not exist".format(track))
+
+        return self.tracks[track][self.DESC]
+
+
+    def set_track_attr(self, track, new_name=None, new_color=None, new_desc=None):
         """
+        Sets the attributes of a track.  If any of the attributes specified are "None", they are not modified.
+
         :Params:
-        :color - one of the colors specified in the imported 'color' class
+        :new_name - the new name for the track
+        :new_color - one of the colors specified in the imported 'color' class
+        :new_desc - a new description for the track
         """
         track = track.upper()
         if track not in self.tracks:
             raise ValueError("Given track {} does not exist".format(track))
 
-        self.tracks[track][self.COLOR] = color
+        if new_name:
+            if new_name in self.tracks:
+                raise ValueError("Track '{}' already exists".format(new_name))
+
+            self.tracks[new_name] = self.tracks[track]
+            del self.tracks[track]
+            track = new_name
+
+        if new_color:
+            self.tracks[track][self.COLOR] = new_color
+
+        if new_desc:
+            self.tracks[track][self.DESC] = new_desc

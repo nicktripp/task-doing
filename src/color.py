@@ -7,10 +7,12 @@ class color:
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
     RED = '\033[91m'
+    GRAY = '\033[37m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
     FAINT = '\033[2m'
     BLINK = '\033[5m'
     END = '\033[0m'
+    PLAIN = END
 
-    COLORS = ['PURPLE', 'CYAN', 'DARKCYAN', 'BLUE', 'GREEN', 'YELLOW', 'RED']
+    COLORS = ['PLAIN', 'GRAY', 'PURPLE', 'CYAN', 'DARKCYAN', 'BLUE', 'GREEN', 'YELLOW', 'RED']
