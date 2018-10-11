@@ -13,6 +13,7 @@
 #TODO: Undo action button (via another JSON file!)
 #TODO: Switch from task lists to task sets, and from delete by index to delete by ID
 #TODO: multiple task add
+#TODO: Rewrite for SQLite Database to store data
 #==============================================================================#
 import argparse
 import os
@@ -98,8 +99,9 @@ def main():
     parser_add_track.add_argument('-c','--color', dest='track_color', choices=color.COLORS, help='color of the new track')
 
     # Delete track #TODO connect parser
-    parser_del_track = track_subparsers.add_parser('delete', help="Delete a task track.  WARNING: also deletes all associated tasks with it; consider first transfering with 'tracks transfer'", aliases=['del','d'])
+    parser_del_track = track_subparsers.add_parser('delete', help="Delete a task track. Fails if tasks are still inside unless forced; consider first transfering with 'tracks transfer'", aliases=['del','d'])
     parser_del_track.add_argument('del_track', help='the track to delete')
+    parser_del_track.add_argument('-f','--force', action='store_true', dest='track_force_del', help='forces deletion, even if the given track still has tasks')
 
     # Transfer track #TODO make, connect parser
     # Rename track #TODO make, connect parser
@@ -134,8 +136,6 @@ def main():
                     line = color.FAINT + line + color.END
                 print(line)
             print(color.END)
-        print("")
-
 
     # Connect 'add' parser
     elif 'new_task' in dargs:
@@ -144,7 +144,6 @@ def main():
 
     # Connect 'del' parser
     elif args.subcommand.find('d') == 0:
-
         if args.del_task_txt and args.del_task_num:
             parser.error('delete: conflicting args: specify exactly one of -n DEL_TASK_NUM or DEL_TASK_TXT')
 
@@ -172,7 +171,6 @@ def main():
 
     # Connect 'comp' parser
     elif args.subcommand.find('c') == 0:
-
         if args.comp_task_txt and args.comp_task_num:
             parser.error('delete: conflicting args: specify exactly one of -n DEL_TASK_NUM or DEL_TASK_TXT')
 
@@ -219,15 +217,39 @@ def main():
             for i,track in enumerate(tracks):
                 print(row.format(track,len(task_list.get_tasks_in_track(tracks_list[i]))))
 
-            print("")
 
-        # Add tracks
+        # Add track
         elif args.tracks_action.find('a') == 0:
-            pass
-        # Del tracks
-        elif args.tracks_action.find('d') == 0:
-            pass
+            if args.track_color:
+                color_code = color.__dict__[args.track_color]
 
+            try:
+                task_list.add_track(args.new_track, desc=args.track_desc, color=color_code)
+            except ValueError as err:
+                exit("tracks add: {}".format(err))
+
+            print("Added track: '{}{}{}'".format(color_code,args.new_track.upper(), color.END))
+
+        # Del track
+        elif args.tracks_action.find('d') == 0:
+            task_cnt = len(task_list.get_tasks_in_track(args.del_track))
+            color_code = task_list.get_track_color(args.del_track)
+
+            if task_cnt == 0 or args.track_force_del:
+                try:
+                    task_list.del_track(args.del_track)
+                except ValueError as err:
+                    exit("tracks add: {}".format(err))
+
+                if args.track_force_del and task_cnt > 0:
+                    print("Deleted {} tasks".format(task_cnt))
+                print("Deleted track: '{}{}{}'".format(color_code, args.del_track, color.END))
+
+
+            else:
+                print("tracks delete: track '{}{}{}' still has {} task(s); transfer task(s) or rerun with 'tracks delete --force'".format(color_code,args.del_track,color.END, task_cnt))
+
+    # print("")
     task_list.write_to_file(data_file)
 
 if __name__ == '__main__': main()
