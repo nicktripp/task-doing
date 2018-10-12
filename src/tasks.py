@@ -144,7 +144,7 @@ def main():
                 print_track_header(task_list, track, is_color=args.list_is_color)
 
             if args.list_is_color:
-                print(task_list.get_track_color(track), end='')
+                print(task_list.get_track_color(track), end="")
 
             if not args.list_merge:
                 print("")
@@ -153,7 +153,7 @@ def main():
                 line_marker = "{}.".format(str(i)) if args.list_is_enum else "-"
                 line = " {} {}".format(line_marker, task.txt)
                 if task.complete:
-                    line = color.FAINT + line + color.END
+                    line = color.FAINT + line + color.NOT_FAINT
                 print(line)
 
             print(color.END, end='' if args.list_merge else '\n')
